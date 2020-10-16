@@ -1,0 +1,17 @@
+{
+  "tempo": {
+    "media": "90973.60",
+    "desvioPadrao": "763.28",
+    "variancia": "582591.44"
+  },
+  "memoria": {
+    "media": "17.84",
+    "desvioPadrao": "4.36",
+    "variancia": "18.98"
+  },
+  "movimentos": {
+    "media": "207889.40",
+    "desvioPadrao": "195.39",
+    "variancia": "38177.84"
+  }
+}

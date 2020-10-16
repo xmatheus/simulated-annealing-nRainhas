@@ -1,72 +1,22 @@
-const cvs = document.getElementById('canvas')
-const ctx = cvs.getContext('2d')
-let size = 8 // qtd de rainhas e tamanho do tabuleiro size*size
-drawChess()
+function init(size) {
+  // const size = 128 // qtd de rainhas e tamanho do tabuleiro size*size
 
-document.querySelector('input').addEventListener('keyup', function (event) {
-  let key = event.keyCode || event.key
+  let begin = Date.now()
 
-  if (key === 13) {
-    event.preventDefault()
-    document.querySelector('button').click()
-  }
-})
-
-function getSize() {
-  const value = document.getElementById('size').value
-
-  if (!value || value <= 0) {
-    alert(
-      'A quantidade de rainhas foi inválida...\n Vamos fazer com 8 rainhas.'
-    )
-    document.getElementById('size').value = 8
-    return 8
-  }
-
-  return value
-}
-
-function drawChess() {
-  // ctx.fillStyle = 'red'
-  // ctx.fillRect(5, 0, 1, 1)
-  cvs.width = size
-  cvs.height = size
-  let resto = 0
-
-  for (let i = 0; i < size; i++) {
-    if (resto === 0) {
-      resto = 1
-    } else {
-      resto = 0
-    }
-    for (let j = 0; j < size; j++) {
-      ctx.fillStyle = '#fff'
-      if (j % 2 === resto) {
-        ctx.fillStyle = '#aaaaaa'
-        ctx.fillRect(j, i, 1, 1)
-      }
-    }
-  }
-}
-
-function setMovement(value) {
-  console.log('[!] mov', value)
-  document.querySelector('#movement').textContent = value
-}
-
-function init() {
-  size = getSize()
-
-  drawChess()
-  console.time('exec')
   const mngMatrix = manageMatrix()
   const matrix = mngMatrix.createMatrix(size)
+  start(100)
 
-  let queens = searchQueensAndCalcWeight().genQueensInRandomPositions()
-  mngMatrix.setQueensInMatrix(queens)
-  start()
-  console.log('[!] Quantidade de rainhas -> ', size)
-  console.timeEnd('exec')
+  let end = Date.now()
+  let endTime = end - begin
+
+  const used = process.memoryUsage().heapUsed / 1024 / 1024
+  let memoryUsed = Math.round(used * 100) / 100
+
+  return [size, endTime, memoryUsed, mngMatrix.countMove]
+
+  // console.log('[!] Quantidade de rainhas -> ', size)
+  // console.log(`[!] Uso de memória ${Math.round(used * 100) / 100} MB`)
 
   function manageMatrix() {
     let countMove = 0
@@ -80,12 +30,14 @@ function init() {
       }
       return matrix
     }
+
     function move(line, column, dLine, dColumn) {
       matrix[dLine][dColumn] = matrix[line][column]
       // console.log(`[->] movendo de ${line}:${column} para ${dLine}:${dColumn}`)
       matrix[line][column] = { queen: false, color: null }
       this.countMove++
     }
+
     function setQueensInMatrix(queens) {
       queens.map(({ line, column }) => {
         matrix[line][column].queen = true
@@ -95,86 +47,68 @@ function init() {
     return { createMatrix, move, setQueensInMatrix, countMove }
   }
 
-  function randomRGB() {
-    const R = Math.floor(Math.random() * 200) + 55
-    const G = Math.floor(Math.random() * 200) + 55
-    const B = Math.floor(Math.random() * 200) + 55
-    return { R, G, B }
-  }
-
   function showMatrixwithQueens() {
     for (let i = 0; i < size; i++) {
       let str = ''
       for (let j = 0; j < size; j++) {
         str += `${matrix[i][j].queen ? 'x ' : 'o '}`
-        // console.log(`${matrix[i][j].queen ? 'x' : 'o'}`)
       }
       console.log(str)
     }
   }
 
-  function start() {
-    let count = 0
-    renderScreen(false)
-    setTimeout(() => {
-      const loop = setInterval(() => {
-        count = 0
-        queens.map(queen => {
-          const { flag, line, column } = searchQueensAndCalcWeight().start(
-            queen.line,
-            queen.column
-          )
+  function verifyConclusion(queens) {
+    count = 0
+    queens.map(queen => {
+      const { flag } = searchQueensAndCalcWeight().getWeightsPerPosition(
+        queen.line,
+        queen.column,
+        0
+      )
+      if (!flag) {
+        count++
+      }
+    })
 
-          if (flag) {
-            queen.line = line
-            queen.column = column
-            renderScreen(false)
-          } else {
-            count++
-          }
-        })
-        if (count >= size) {
-          showMatrixwithQueens()
-          setMovement(mngMatrix.countMove)
-          console.log(
-            `[!] finalizado, total de movimentos -> ${mngMatrix.countMove}`
-          )
-          clearInterval(loop)
-        }
-      }, 50)
-    }, 700)
+    if (count === size) {
+      console.log('[✅] Solucionado')
+      return
+    }
+    console.log('[X] Não solucionado')
   }
 
-  // funcao start que nao tem delay e nem animacao
-  // function start() {
-  //   let count = 0
-  //   while (count < size) {
-  //     count = 0
-  //     queens.map(queen => {
-  //       const { flag, line, column } = searchQueensAndCalcWeight().start(
-  //         queen.line,
-  //         queen.column
-  //       )
+  function start(temperature) {
+    let queens = searchQueensAndCalcWeight().genQueensInRandomPositions()
+    mngMatrix.setQueensInMatrix(queens)
 
-  //       if (flag) {
-  //         queen.line = line
-  //         queen.column = column
-  //       } else {
-  //         count++
-  //       }
-  //     })
-  //   }
-  //   console.log(queens)
-  //   showMatrixwithQueens(queens)
-  //   renderScreen(false)
-  //   console.log(`[!] finalizado, total de movimentos -> ${mngMatrix.countMove}`)
-  // }
+    while (temperature > 0) {
+      queens.map(queen => {
+        const { flag, line, column } = searchQueensAndCalcWeight().start(
+          queen.line,
+          queen.column,
+          temperature
+        )
+
+        if (flag) {
+          queen.line = line
+          queen.column = column
+        }
+      })
+      temperature -= 0.01
+
+      // console.log(temperature)
+    }
+    // showMatrixwithQueens(queens)
+    verifyConclusion(queens)
+    // console.log(`[!] finalizado, total de movimentos -> ${mngMatrix.countMove}`)
+  }
 
   function searchQueensAndCalcWeight() {
-    function start(line, column) {
+    function start(line, column, temperature) {
       const { flag, line: dLine, column: dColumn } = getWeightsPerPosition(
         line,
-        column
+        column,
+        temperature
       )
 
       if (flag) {
@@ -187,9 +121,8 @@ function init() {
     function genQueens() {
       let queens = []
       for (let j = 0; j < size; j++) {
-        const { R, G, B } = randomRGB()
         matrix[0][j].queen = true
-        queens.push({ line: 0, column: j, R, G, B })
+        queens.push({ line: 0, column: j })
       }
       return queens
     }
@@ -206,16 +139,13 @@ function init() {
         )
 
         if (!equalPosition) {
-          const { R, G, B } = randomRGB()
-          queens.push({ line, column, R, G, B })
+          queens.push({ line, column })
         }
       }
-
-      // console.log(queens)
       return queens
     }
 
-    function getWeightsPerPosition(line, column) {
+    function getWeightsPerPosition(line, column, temperature) {
       const result = []
 
       result.push(searchTop(line, column))
@@ -229,11 +159,14 @@ function init() {
       result.push(searchLeftoToTop(line, column))
 
       let count = 0
+      let amountQueens = 0
 
       result.map(element => {
         //se nao for rainhas ele conta
         if (!element.flag) {
           count++
+        } else {
+          amountQueens++
         }
       })
 
@@ -274,13 +207,51 @@ function init() {
           AllPoints.push(point)
         })
       })
+      if (AllPoints.length <= 0) {
+        return { flag: false }
+      }
 
-      //ordenar por menos rainhas no perimetro
-      AllPoints.sort((a, b) => {
-        return a.value - b.value
-      })
+      //parte do simulated Annealing
+
+      //escolhe um vizinho aleatorio
+      let lenghtAllpoints = AllPoints.length - 1
+      const index = Math.floor(Math.random() * lenghtAllpoints)
+      let selectedPosition = AllPoints[index]
+
+      const deltaE = amountQueens - selectedPosition.value
+
+      if (deltaE === 0) {
+        return { flag: false }
+      }
+      // console.log('\n[oldPosition] ', line, column, amountQueens)
+      // console.log('[selectedPosition] ', selectedPosition)
+      // console.log('[deltaE] ', deltaE)
+      //posicao melhor do que a atual
+      if (deltaE > 0) {
+        return { flag: true, ...selectedPosition }
+      }
+
+      //caso ele nao seja uma boa posicao
+      //ele ainda ganha uma chance
+      // let value = Math.exp((deltaE - temperature / 2) / temperature).toFixed(2)
+      let value = Math.exp(deltaE / temperature).toFixed(2)
+      let probability = (Math.random() * 1).toFixed(2)
+
+      // console.log(
+      //   `[deltaE = ${deltaE}][${(value * 100).toFixed(
+      //     2
+      //   )}%][temperature = ${temperature}]`
+      // )
+
+      //value ta dentro da probabilidade
+      if (value > probability) {
+        // console.log('[LUCKY]')
+        return { flag: true, ...selectedPosition }
+      }
+
       // console.log(AllPoints)
-      return { flag: true, ...AllPoints[0] } // melhor posicao naquele momento
+      // console.log('[UNLUCKY]')
+      return { flag: false } // melhor posicao naquele momento
     }
 
     function searchTop(line, column) {
@@ -460,21 +431,10 @@ function init() {
     return {
       start,
       genQueens,
-      genQueensInRandomPositions
-    }
-  }
-
-  function renderScreen(flag = true) {
-    ctx.clearRect(0, 0, size, size)
-    drawChess()
-    queens.map(queen => {
-      const { line, column, R, G, B } = queen
-
-      ctx.fillStyle = `rgb(${R},${G},${B})`
-      ctx.fillRect(column, line, 1, 1)
-    })
-    if (flag) {
-      requestAnimationFrame(renderScreen)
+      genQueensInRandomPositions,
+      getWeightsPerPosition
     }
   }
 }
+
+module.exports = init
