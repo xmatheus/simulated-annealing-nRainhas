@@ -3,6 +3,9 @@
 
 O objetivo é achar uma posição para as rainhas que elas não se ataquem na horizontal, diagonal e vertical.
 
+> o algoritmo gera posições aleatórias para as rainhas.
+
+
 > exemplo do problema resolvido
 
 ![image](https://user-images.githubusercontent.com/34286800/96286083-d4454380-0fad-11eb-96a0-ae427a33d452.png)
